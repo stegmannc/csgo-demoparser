@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"bytes"
 	"time"
-	"github.com/stegmannc/demoinfogogo-master/protom"
+	"github.com/stegmannc/csgo-demoparser/protom"
 )
 
 const (
