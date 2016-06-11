@@ -25,6 +25,7 @@ _testmain.go
 *.test
 *.prof
 
+.idea
 *.iml
 match.dem
 
