@@ -18,4 +18,4 @@ For OSX users install go via homebrew with `brew install go` and set all path va
 ## Build and Run
 `go install`
 
-`./csgo-demoparser demo.dem`
+`csgo-demoparser -f demo.dem`

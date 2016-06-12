@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -42,6 +43,7 @@ type demoheader struct {
 	PlaybackFrames  int32
 	Signonlength    int32
 }
+
 type democmdheader struct {
 	Cmd        byte
 	Tick       int32
@@ -54,7 +56,7 @@ type demofile struct {
 	stream *Demostream
 }
 
-func (d *demofile) PrintInfo() {
+func (d *demofile) PrintHeader() {
 	fmt.Println("----HEADER START----")
 	fmt.Printf("demofilestamp: %x\n", d.header.Demofilestamp)
 	fmt.Printf("demoprotocol: %d\n", d.header.Demoprotocol)
@@ -70,6 +72,7 @@ func (d *demofile) PrintInfo() {
 	fmt.Printf("Ticks: %d\n", d.header.PlaybackTicks)
 	fmt.Println("----HEADER END----")
 }
+
 func (d *demofile) readCommandHeader() democmdheader {
 	return democmdheader{Cmd: d.stream.GetByte(),
 		Tick:       d.stream.GetInt(),
@@ -90,102 +93,103 @@ func processPacket(stream *Demostream) {
 	case protom.SVC_Messages_svc_ServerInfo:
 		msg := new(protom.CSVCMsg_ServerInfo)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_SendTable:
 		msg := new(protom.CSVCMsg_SendTable)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_ClassInfo:
 		msg := new(protom.CSVCMsg_ClassInfo)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_SetPause:
 		msg := new(protom.CSVCMsg_SetPause)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_CreateStringTable:
 		msg := new(protom.CSVCMsg_CreateStringTable)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_UpdateStringTable:
 		msg := new(protom.CSVCMsg_UpdateStringTable)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_VoiceInit:
 		msg := new(protom.CSVCMsg_VoiceInit)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_VoiceData:
 		msg := new(protom.CSVCMsg_VoiceData)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_Print:
 		msg := new(protom.CSVCMsg_Print)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_Sounds:
 		msg := new(protom.CSVCMsg_Sounds)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_SetView:
 		msg := new(protom.CSVCMsg_SetView)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_FixAngle:
 		msg := new(protom.CSVCMsg_FixAngle)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_CrosshairAngle:
 		msg := new(protom.CSVCMsg_CrosshairAngle)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_BSPDecal:
 		msg := new(protom.CSVCMsg_BSPDecal)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_UserMessage:
 		msg := new(protom.CSVCMsg_UserMessage)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_GameEvent:
 		msg := new(protom.CSVCMsg_GameEvent)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_PacketEntities:
 		msg := new(protom.CSVCMsg_PacketEntities)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_TempEntities:
 		msg := new(protom.CSVCMsg_TempEntities)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_Prefetch:
 		msg := new(protom.CSVCMsg_Prefetch)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_Menu:
 		msg := new(protom.CSVCMsg_Menu)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_GameEventList:
 		msg := new(protom.CSVCMsg_GameEventList)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	case protom.SVC_Messages_svc_GetCvarValue:
 		msg := new(protom.CSVCMsg_GetCvarValue)
 		stream.ParseToStruct(msg, length)
-		printJson(msg)
+		printJSON(msg)
 	default:
 		fmt.Printf("unmapped messagetype: %d\n", messagetype)
 	}
 }
 
-func printJson(msg proto.Message) {
+func printJSON(msg proto.Message) error {
 	data, err := json.Marshal(msg)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	fmt.Println(string(data))
+	return nil
 }
 
 func (d *demofile) readPacket() {
@@ -229,7 +233,7 @@ func (d *demofile) readDatatables() {
 			panic(err)
 		}
 		if sendTable.GetNetTableName() == "DT_CSPlayerResource" {
-			printJson(sendTable)
+			printJSON(sendTable)
 		}
 
 		if sendTable.GetIsEnd() {
@@ -280,7 +284,7 @@ func (d *demofile) readStringTables() {
 
 }
 
-func (d *demofile) LoopFrames() {
+func (d *demofile) ProcessFrames() {
 	for {
 		cmdHeader := d.readCommandHeader()
 		switch cmdHeader.Cmd {
@@ -305,34 +309,44 @@ func (d *demofile) LoopFrames() {
 		d.frame++
 	}
 }
-func (d *demofile) Open(path string) {
+
+//
+func OpenNewDemoFile(path string) (*demofile, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	d.stream = NewDemoStream(f)
-	d.header = demoheader{}
+	d := &demofile{
+		tick:   0,
+		frame:  0,
+		header: demoheader{},
+		stream: NewDemoStream(f),
+	}
+
 	err = binary.Read(d.stream, binary.LittleEndian, &d.header)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	if string(d.header.Demofilestamp[:7]) != DemoHeaderID {
-		log.Fatal("Invalid demo header, are you sure this is a .dem?\n")
+		return nil, errors.New("Invalid demo header, are you sure this is a .dem?")
 	}
-	d.tick = 0
-	d.frame = 0
+
+	return d, nil
 }
 
-func main() {
-	filename := flag.String("filename", "", "Path to *.dem file")
+var filename = flag.String("f", "", "Path to *.dem file")
 
+func main() {
 	flag.Parse()
-	fmt.Println("filename:", filename)
+
 	start := time.Now()
-	d := demofile{}
-	d.Open(*filename)
-	d.PrintInfo()
-	d.LoopFrames()
+	demofile, err := OpenNewDemoFile(*filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	demofile.PrintHeader()
+	demofile.ProcessFrames()
+
 	elapsed := time.Since(start)
 	log.Printf("Demo parsing took %s", elapsed)
 }
