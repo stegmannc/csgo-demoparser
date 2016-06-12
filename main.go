@@ -1,29 +1,30 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"log"
 	"os"
-	"encoding/json"
-	"bytes"
 	"time"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/stegmannc/csgo-demoparser/protom"
 )
 
 const (
-	MAX_OSPATH = 260
-	PACKET_OFFSET = 160
-	DEMO_HEADER_ID = "HL2DEMO"
-	DEM_SIGNON = 1
-	DEM_PACKET = 2
-	DEM_SYNCTICK = 3
-	DEM_CONSOLECMD = 4
-	DEM_USERCMD = 5
-	DEM_DATATABLES = 6
-	DEM_STOP = 7
-	DEM_CUSTOMDATA = 8
+	MaxOSPath        = 260
+	PacketOffset     = 160
+	DemoHeaderId     = "HL2DEMO"
+	DEM_SIGNON       = 1
+	DEM_PACKET       = 2
+	DEM_SYNCTICK     = 3
+	DEM_CONSOLECMD   = 4
+	DEM_USERCMD      = 5
+	DEM_DATATABLES   = 6
+	DEM_STOP         = 7
+	DEM_CUSTOMDATA   = 8
 	DEM_STRINGTABLES = 9
 )
 
@@ -31,13 +32,13 @@ type Demoheader struct {
 	Demofilestamp   [8]byte
 	Demoprotocol    int32
 	Networkprotocol int32
-	Servername      [MAX_OSPATH]byte
-	Clientname      [MAX_OSPATH]byte
-	Mapname         [MAX_OSPATH]byte
-	Gamedirectory   [MAX_OSPATH]byte
-	Playback_time   float32
-	Playback_ticks  int32
-	Playback_frames int32
+	Servername      [MaxOSPath]byte
+	Clientname      [MaxOSPath]byte
+	Mapname         [MaxOSPath]byte
+	Gamedirectory   [MaxOSPath]byte
+	PlaybackTime    float32
+	PlaybackTicks   int32
+	PlaybackFrames  int32
 	Signonlength    int32
 }
 type democmdheader struct {
@@ -60,12 +61,12 @@ func (d *demofile) PrintInfo() {
 	fmt.Printf("Server Name: %s\n", d.header.Servername)
 	fmt.Printf("Client name: %s\n", d.header.Clientname)
 	fmt.Printf("Mapname: %s\n", d.header.Mapname)
-	fmt.Printf("Ticks: %d\n", d.header.Playback_ticks)
+	fmt.Printf("Ticks: %d\n", d.header.PlaybackTicks)
 	fmt.Printf("Game Directory: %s\n", d.header.Gamedirectory)
-	fmt.Printf("Playback time: %f seconds\n", d.header.Playback_time)
+	fmt.Printf("Playback time: %f seconds\n", d.header.PlaybackTime)
 	fmt.Printf("Signon Length: %d\n", d.header.Signonlength)
-	fmt.Printf("Frames: %d\n", d.header.Playback_frames)
-	fmt.Printf("Ticks: %d\n", d.header.Playback_ticks)
+	fmt.Printf("Frames: %d\n", d.header.PlaybackFrames)
+	fmt.Printf("Ticks: %d\n", d.header.PlaybackTicks)
 	fmt.Println("----HEADER END----")
 }
 func (d *demofile) readCommandHeader() democmdheader {
@@ -89,87 +90,87 @@ func processPacket(stream *Demostream) {
 		msg := new(protom.CSVCMsg_ServerInfo)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_SendTable         :
+	case protom.SVC_Messages_svc_SendTable:
 		msg := new(protom.CSVCMsg_SendTable)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_ClassInfo         :
+	case protom.SVC_Messages_svc_ClassInfo:
 		msg := new(protom.CSVCMsg_ClassInfo)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_SetPause          :
+	case protom.SVC_Messages_svc_SetPause:
 		msg := new(protom.CSVCMsg_SetPause)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_CreateStringTable :
+	case protom.SVC_Messages_svc_CreateStringTable:
 		msg := new(protom.CSVCMsg_CreateStringTable)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_UpdateStringTable :
+	case protom.SVC_Messages_svc_UpdateStringTable:
 		msg := new(protom.CSVCMsg_UpdateStringTable)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_VoiceInit         :
+	case protom.SVC_Messages_svc_VoiceInit:
 		msg := new(protom.CSVCMsg_VoiceInit)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_VoiceData         :
+	case protom.SVC_Messages_svc_VoiceData:
 		msg := new(protom.CSVCMsg_VoiceData)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_Print             :
+	case protom.SVC_Messages_svc_Print:
 		msg := new(protom.CSVCMsg_Print)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_Sounds            :
+	case protom.SVC_Messages_svc_Sounds:
 		msg := new(protom.CSVCMsg_Sounds)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_SetView           :
+	case protom.SVC_Messages_svc_SetView:
 		msg := new(protom.CSVCMsg_SetView)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_FixAngle          :
+	case protom.SVC_Messages_svc_FixAngle:
 		msg := new(protom.CSVCMsg_FixAngle)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_CrosshairAngle    :
+	case protom.SVC_Messages_svc_CrosshairAngle:
 		msg := new(protom.CSVCMsg_CrosshairAngle)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_BSPDecal          :
+	case protom.SVC_Messages_svc_BSPDecal:
 		msg := new(protom.CSVCMsg_BSPDecal)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_UserMessage       :
+	case protom.SVC_Messages_svc_UserMessage:
 		msg := new(protom.CSVCMsg_UserMessage)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_GameEvent         :
+	case protom.SVC_Messages_svc_GameEvent:
 		msg := new(protom.CSVCMsg_GameEvent)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_PacketEntities    :
+	case protom.SVC_Messages_svc_PacketEntities:
 		msg := new(protom.CSVCMsg_PacketEntities)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_TempEntities      :
+	case protom.SVC_Messages_svc_TempEntities:
 		msg := new(protom.CSVCMsg_TempEntities)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_Prefetch          :
+	case protom.SVC_Messages_svc_Prefetch:
 		msg := new(protom.CSVCMsg_Prefetch)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_Menu              :
+	case protom.SVC_Messages_svc_Menu:
 		msg := new(protom.CSVCMsg_Menu)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_GameEventList     :
+	case protom.SVC_Messages_svc_GameEventList:
 		msg := new(protom.CSVCMsg_GameEventList)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
-	case protom.SVC_Messages_svc_GetCvarValue      :
+	case protom.SVC_Messages_svc_GetCvarValue:
 		msg := new(protom.CSVCMsg_GetCvarValue)
 		stream.ParseToStruct(msg, length)
 		printJson(msg)
@@ -187,13 +188,13 @@ func printJson(msg proto.Message) {
 }
 
 func (d *demofile) readPacket() {
-	d.stream.Skip(PACKET_OFFSET)
+	d.stream.Skip(PacketOffset)
 	blocksize := d.stream.GetInt()
 	//fmt.Printf("CHUNK SIZE: %d\n", blocksize)
 	buffer := make([]byte, blocksize)
 	d.stream.Read(buffer)
 	stream := NewDemoStream(bytes.NewReader(buffer))
-	go processPacket(stream)
+	processPacket(stream)
 }
 
 type ServerClass struct {
@@ -245,10 +246,10 @@ func (d *demofile) readDatatables() {
 	for i := 0; i < serverClassCount; i++ {
 		serverClass := &ServerClass{
 			ClassID: stream.GetInt16(),
-			Name: stream.GetDataTableString(),
-			DTName: stream.GetDataTableString(),
+			Name:    stream.GetDataTableString(),
+			DTName:  stream.GetDataTableString(),
 		}
-		serverClass.DataTableID = findDataTableId(dataTables, serverClass.DTName)
+		serverClass.DataTableID = findDataTableID(dataTables, serverClass.DTName)
 		fmt.Println(serverClass)
 		serverClasses[i] = serverClass
 	}
@@ -257,7 +258,7 @@ func (d *demofile) readDatatables() {
 
 }
 
-func findDataTableId(sendTables []*protom.CSVCMsg_SendTable, name string) (int) {
+func findDataTableID(sendTables []*protom.CSVCMsg_SendTable, name string) int {
 	for index, sendTable := range sendTables {
 		if sendTable.GetNetTableName() == name {
 			return index
@@ -314,7 +315,7 @@ func (d *demofile) Open(path string) {
 	if err != nil {
 		panic(err)
 	}
-	if string(d.header.Demofilestamp[:7]) != DEMO_HEADER_ID {
+	if string(d.header.Demofilestamp[:7]) != DemoHeaderId {
 		log.Fatal("Invalid demo header, are you sure this is a .dem?\n")
 	}
 	d.tick = 0
