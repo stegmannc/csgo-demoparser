@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -14,21 +15,21 @@ import (
 )
 
 const (
-	MaxOSPath        = 260
-	PacketOffset     = 160
-	DemoHeaderId     = "HL2DEMO"
-	DEM_SIGNON       = 1
-	DEM_PACKET       = 2
-	DEM_SYNCTICK     = 3
-	DEM_CONSOLECMD   = 4
-	DEM_USERCMD      = 5
-	DEM_DATATABLES   = 6
-	DEM_STOP         = 7
-	DEM_CUSTOMDATA   = 8
-	DEM_STRINGTABLES = 9
+	MaxOSPath      = 260
+	PacketOffset   = 160
+	DemoHeaderID   = "HL2DEMO"
+	DemSignon      = 1
+	DemPacket      = 2
+	DemSynctick    = 3
+	DemConsoleCMD  = 4
+	DemUserCMD     = 5
+	DemDatatables  = 6
+	DemStop        = 7
+	DemCustomdata  = 8
+	DemSringTables = 9
 )
 
-type Demoheader struct {
+type demoheader struct {
 	Demofilestamp   [8]byte
 	Demoprotocol    int32
 	Networkprotocol int32
@@ -47,7 +48,7 @@ type democmdheader struct {
 	Playerslot byte
 }
 type demofile struct {
-	header Demoheader
+	header demoheader
 	tick   int32
 	frame  int32
 	stream *Demostream
@@ -283,22 +284,22 @@ func (d *demofile) LoopFrames() {
 	for {
 		cmdHeader := d.readCommandHeader()
 		switch cmdHeader.Cmd {
-		case DEM_SIGNON, DEM_PACKET:
+		case DemSignon, DemPacket:
 			d.readPacket()
-		case DEM_SYNCTICK:
+		case DemSynctick:
 			fmt.Println("skip synctick")
-		case DEM_CONSOLECMD:
+		case DemConsoleCMD:
 			fmt.Println("consolecmd")
-		case DEM_USERCMD:
+		case DemUserCMD:
 			fmt.Println("usercmd")
-		case DEM_DATATABLES:
+		case DemDatatables:
 			d.readDatatables()
-		case DEM_STOP:
+		case DemStop:
 			fmt.Println("STOP")
 			return
-		case DEM_CUSTOMDATA:
+		case DemCustomdata:
 			fmt.Println("customdata")
-		case DEM_STRINGTABLES:
+		case DemSringTables:
 			d.readStringTables()
 		}
 		d.frame++
@@ -310,29 +311,26 @@ func (d *demofile) Open(path string) {
 		panic(err)
 	}
 	d.stream = NewDemoStream(f)
-	d.header = Demoheader{}
+	d.header = demoheader{}
 	err = binary.Read(d.stream, binary.LittleEndian, &d.header)
 	if err != nil {
 		panic(err)
 	}
-	if string(d.header.Demofilestamp[:7]) != DemoHeaderId {
+	if string(d.header.Demofilestamp[:7]) != DemoHeaderID {
 		log.Fatal("Invalid demo header, are you sure this is a .dem?\n")
 	}
 	d.tick = 0
 	d.frame = 0
 }
-func usage() {
-	fmt.Printf("Usage: %s [demo.dem]\n", os.Args[0])
-	os.Exit(2)
-}
-func main() {
-	if len(os.Args) != 2 {
-		usage()
-	}
-	start := time.Now()
 
+func main() {
+	filename := flag.String("filename", "", "Path to *.dem file")
+
+	flag.Parse()
+	fmt.Println("filename:", filename)
+	start := time.Now()
 	d := demofile{}
-	d.Open(os.Args[1])
+	d.Open(*filename)
 	d.PrintInfo()
 	d.LoopFrames()
 	elapsed := time.Since(start)
