@@ -83,8 +83,12 @@ func processPacket(stream *Demostream) {
 	length := stream.GetVarInt()
 	message := protom.SVC_Messages(messagetype)
 
-	if messagetype < 5 {
+	if messagetype < 5 || messagetype == 35 {
 		return //net messages ignored
+	}
+
+	if messagetype == 30 {
+		fmt.Println("################################asdasdasdasdasdasdasdasdasdasdasdas")
 	}
 
 	//fmt.Printf("length: %d\n", length)
@@ -129,7 +133,7 @@ func processPacket(stream *Demostream) {
 	case protom.SVC_Messages_svc_Sounds:
 		msg := new(protom.CSVCMsg_Sounds)
 		stream.ParseToStruct(msg, length)
-		printJSON(msg)
+		//printJSON(msg)
 	case protom.SVC_Messages_svc_SetView:
 		msg := new(protom.CSVCMsg_SetView)
 		stream.ParseToStruct(msg, length)
@@ -172,6 +176,7 @@ func processPacket(stream *Demostream) {
 		printJSON(msg)
 	case protom.SVC_Messages_svc_GameEventList:
 		msg := new(protom.CSVCMsg_GameEventList)
+		msg.GetDescriptors()
 		stream.ParseToStruct(msg, length)
 		printJSON(msg)
 	case protom.SVC_Messages_svc_GetCvarValue:
@@ -202,6 +207,13 @@ func (d *demofile) readPacket() {
 	processPacket(stream)
 }
 
+func (d *demofile) skipPacket() {
+	//d.stream.Skip(PacketOffset)
+	blocksize := d.stream.GetInt()
+	//sfmt.Printf("CHUNK SIZE: %d\n", blocksize)
+	d.stream.Skip(int64(blocksize))
+}
+
 type ServerClass struct {
 	ClassID     int16
 	DataTableID int
@@ -216,7 +228,7 @@ func (d *demofile) readDatatables() {
 	d.stream.Read(buffer)
 	stream := NewDemoStream(bytes.NewReader(buffer))
 
-	dataTables := make([]*protom.CSVCMsg_SendTable, 0)
+	var dataTables []*protom.CSVCMsg_SendTable
 
 	for {
 		messageType := stream.GetVarInt()
@@ -232,9 +244,8 @@ func (d *demofile) readDatatables() {
 		if err != nil {
 			panic(err)
 		}
-		if sendTable.GetNetTableName() == "DT_CSPlayerResource" {
-			printJSON(sendTable)
-		}
+
+		//printJSON(sendTable)
 
 		if sendTable.GetIsEnd() {
 			break
@@ -251,11 +262,10 @@ func (d *demofile) readDatatables() {
 	for i := 0; i < serverClassCount; i++ {
 		serverClass := &ServerClass{
 			ClassID: stream.GetInt16(),
-			Name:    stream.GetDataTableString(),
-			DTName:  stream.GetDataTableString(),
+			Name:    stream.GetString(),
+			DTName:  stream.GetString(),
 		}
 		serverClass.DataTableID = findDataTableID(dataTables, serverClass.DTName)
-		fmt.Println(serverClass)
 		serverClasses[i] = serverClass
 	}
 
@@ -272,18 +282,6 @@ func findDataTableID(sendTables []*protom.CSVCMsg_SendTable, name string) int {
 	return -1
 }
 
-func (d *demofile) readStringTables() {
-	blocksize := d.stream.GetInt()
-	fmt.Printf("StringTables size: %d\n", blocksize)
-	buffer := make([]byte, blocksize)
-	d.stream.Read(buffer)
-	stream := NewDemoStream(bytes.NewReader(buffer))
-
-	numberOfTables := stream.GetByte()
-	fmt.Printf("stringTables size: %d\n", numberOfTables)
-
-}
-
 func (d *demofile) ProcessFrames() {
 	for {
 		cmdHeader := d.readCommandHeader()
@@ -293,6 +291,7 @@ func (d *demofile) ProcessFrames() {
 		case DemSynctick:
 			fmt.Println("skip synctick")
 		case DemConsoleCMD:
+			d.skipPacket()
 			fmt.Println("consolecmd")
 		case DemUserCMD:
 			fmt.Println("usercmd")
@@ -304,13 +303,12 @@ func (d *demofile) ProcessFrames() {
 		case DemCustomdata:
 			fmt.Println("customdata")
 		case DemSringTables:
-			d.readStringTables()
+			parseStringTableFrame(d)
 		}
 		d.frame++
 	}
 }
 
-//
 func OpenNewDemoFile(path string) (*demofile, error) {
 	f, err := os.Open(path)
 	if err != nil {

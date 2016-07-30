@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"io"
+
 	"github.com/golang/protobuf/proto"
 )
 
@@ -34,6 +35,19 @@ func (d *Demostream) GetVarInt() uint64 {
 func (d *Demostream) GetCurrentOffset() int {
 	return d.position
 }
+
+func (d *Demostream) GetBit() bool {
+	var x bool
+	err := binary.Read(d.reader, binary.LittleEndian, &x)
+	if err != nil {
+		panic(err)
+	}
+
+	d.position += 1
+	return x
+
+}
+
 func (d *Demostream) GetByte() byte {
 	buf := make([]byte, 1)
 	n, err := d.reader.Read(buf)
@@ -53,9 +67,9 @@ func (d *Demostream) GetInt() int32 {
 	return x
 }
 
-func (d *Demostream) GetDataTableString() string {
+func (d *Demostream) GetString() string {
 	buffer := make([]byte, 0)
-	for b := d.GetByte(); b != 0; b =d.GetByte() {
+	for b := d.GetByte(); b != 0; b = d.GetByte() {
 		buffer = append(buffer, b)
 	}
 
@@ -85,7 +99,7 @@ func (d *Demostream) Skip(n int64) {
 	d.reader.Seek(n, 1)
 }
 
-func (d *Demostream) ParseToStruct(msg proto.Message, messageLength uint64) (error){
+func (d *Demostream) ParseToStruct(msg proto.Message, messageLength uint64) error {
 	buf := make([]byte, messageLength)
 	_, err := d.Read(buf)
 	if err != nil {
