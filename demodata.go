@@ -1,1 +1,0 @@
-package csgo_demoparser

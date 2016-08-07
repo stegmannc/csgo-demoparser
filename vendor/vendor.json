@@ -1,0 +1,43 @@
+{
+	"comment": "",
+	"ignore": "",
+	"package": [
+		{
+			"checksumSHA1": "nhQs2TKmFMhk49atzwnbVyMo+vg=",
+			"path": "github.com/golang/protobuf/proto",
+			"revision": "c3cefd437628a0b7d31b34fe44b3a7a540e98527",
+			"revisionTime": "2016-07-27T17:26:17Z"
+		},
+		{
+			"checksumSHA1": "5CLH5JkO7pTla/+vPq8axMEjzD4=",
+			"path": "github.com/golang/protobuf/proto/proto3_proto",
+			"revision": "c3cefd437628a0b7d31b34fe44b3a7a540e98527",
+			"revisionTime": "2016-07-27T17:26:17Z"
+		},
+		{
+			"checksumSHA1": "sAQaJhuPZpEaC90zTorUWG0/LlI=",
+			"path": "github.com/golang/protobuf/proto/testdata",
+			"revision": "c3cefd437628a0b7d31b34fe44b3a7a540e98527",
+			"revisionTime": "2016-07-27T17:26:17Z"
+		},
+		{
+			"checksumSHA1": "lZFWy27Qo6+m/keDjNFYTxSmvZw=",
+			"path": "github.com/golang/protobuf/ptypes/any",
+			"revision": "c3cefd437628a0b7d31b34fe44b3a7a540e98527",
+			"revisionTime": "2016-07-27T17:26:17Z"
+		},
+		{
+			"checksumSHA1": "K+Ns2gAXVpRiCG5B38xhDqZgP8c=",
+			"path": "github.com/nareix/bits",
+			"revision": "1f3e16538b2591eae3c20c7863a5123dad67e6f4",
+			"revisionTime": "2016-07-29T15:27:11Z"
+		},
+		{
+			"checksumSHA1": "DegS3LQXyfbnjm5V56iG1V4BPxU=",
+			"path": "github.com/segmentio/go-camelcase",
+			"revision": "7085f1e3c734f696a4cd28568c33abae3100126f",
+			"revisionTime": "2016-07-26T19:29:23Z"
+		}
+	],
+	"rootPath": "github.com/stegmannc/csgo-demoparser"
+}

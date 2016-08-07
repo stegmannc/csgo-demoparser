@@ -2,16 +2,17 @@ package main
 
 import (
 	"encoding/binary"
-	"io"
 	"github.com/golang/protobuf/proto"
+	"io"
 )
 
-type Demostream struct {
+type DemoStream struct {
 	reader   io.ReadSeeker
 	position int
+	length   int32
 }
 
-func (d *Demostream) GetVarInt() uint64 {
+func (d *DemoStream) GetVarInt() uint64 {
 	var x uint64
 	var s uint
 	buf := make([]byte, 1)
@@ -31,10 +32,15 @@ func (d *Demostream) GetVarInt() uint64 {
 		s += 7
 	}
 }
-func (d *Demostream) GetCurrentOffset() int {
+
+func (d *DemoStream) IsProcessed() bool {
+	return int32(d.position+1) >= d.length
+}
+
+func (d *DemoStream) GetCurrentOffset() int {
 	return d.position
 }
-func (d *Demostream) GetByte() byte {
+func (d *DemoStream) GetByte() byte {
 	buf := make([]byte, 1)
 	n, err := d.reader.Read(buf)
 	if err != nil {
@@ -43,7 +49,7 @@ func (d *Demostream) GetByte() byte {
 	d.position += n
 	return buf[0]
 }
-func (d *Demostream) GetInt() int32 {
+func (d *DemoStream) GetInt() int32 {
 	var x int32
 	err := binary.Read(d.reader, binary.LittleEndian, &x)
 	if err != nil {
@@ -53,16 +59,26 @@ func (d *Demostream) GetInt() int32 {
 	return x
 }
 
-func (d *Demostream) GetDataTableString() string {
+func (d *DemoStream) GetUInt8() uint8 {
+	var x uint8
+	err := binary.Read(d.reader, binary.LittleEndian, &x)
+	if err != nil {
+		panic(err)
+	}
+	d.position += 1
+	return x
+}
+
+func (d *DemoStream) GetDataTableString() string {
 	buffer := make([]byte, 0)
-	for b := d.GetByte(); b != 0; b =d.GetByte() {
+	for b := d.GetByte(); b != 0; b = d.GetByte() {
 		buffer = append(buffer, b)
 	}
 
 	return string(buffer)
 }
 
-func (d *Demostream) GetInt16() int16 {
+func (d *DemoStream) GetInt16() int16 {
 	var x int16
 	err := binary.Read(d.reader, binary.LittleEndian, &x)
 	if err != nil {
@@ -71,21 +87,22 @@ func (d *Demostream) GetInt16() int16 {
 	d.position += 2
 	return x
 }
-func NewDemoStream(reader io.ReadSeeker) *Demostream {
-	stream := Demostream{reader: reader, position: 0}
+func NewDemoStream(reader io.ReadSeeker, length int32) *DemoStream {
+	stream := DemoStream{reader: reader, position: 0, length: length}
 	return &stream
 }
-func (d *Demostream) Read(out []byte) (int, error) {
+func (d *DemoStream) Read(out []byte) (int, error) {
 	n, err := d.reader.Read(out)
 	d.position += n
 	return n, err
 }
-func (d *Demostream) Skip(n int64) {
+func (d *DemoStream) Skip(n int64) {
 	d.position += int(n)
 	d.reader.Seek(n, 1)
 }
 
-func (d *Demostream) ParseToStruct(msg proto.Message, messageLength uint64) (error){
+func (d *DemoStream) ParseToStruct(msg proto.Message, messageLength uint64) error {
+	d.position += int(messageLength)
 	buf := make([]byte, messageLength)
 	_, err := d.Read(buf)
 	if err != nil {
@@ -96,4 +113,12 @@ func (d *Demostream) ParseToStruct(msg proto.Message, messageLength uint64) (err
 		return err
 	}
 	return nil
+}
+
+func (d *DemoStream) readCommandHeader() *DemoCmdHeader {
+	return &DemoCmdHeader{
+		Cmd:        d.GetUInt8(),
+		Tick:       d.GetInt(),
+		Playerslot: d.GetUInt8(),
+	}
 }
