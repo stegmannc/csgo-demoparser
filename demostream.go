@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"github.com/golang/protobuf/proto"
 	"io"
@@ -10,6 +11,11 @@ type DemoStream struct {
 	reader   io.ReadSeeker
 	position int
 	length   int32
+}
+
+func NewDemoStream(reader io.ReadSeeker, length int32) *DemoStream {
+	stream := DemoStream{reader: reader, position: 0, length: length}
+	return &stream
 }
 
 func (d *DemoStream) GetVarInt() uint64 {
@@ -87,10 +93,7 @@ func (d *DemoStream) GetInt16() int16 {
 	d.position += 2
 	return x
 }
-func NewDemoStream(reader io.ReadSeeker, length int32) *DemoStream {
-	stream := DemoStream{reader: reader, position: 0, length: length}
-	return &stream
-}
+
 func (d *DemoStream) Read(out []byte) (int, error) {
 	n, err := d.reader.Read(out)
 	d.position += n
@@ -113,6 +116,15 @@ func (d *DemoStream) ParseToStruct(msg proto.Message, messageLength uint64) erro
 		return err
 	}
 	return nil
+}
+
+func (d *DemoStream) CreatePacketStream() *DemoStream {
+	packetSize := d.GetInt()
+	buffer := make([]byte, packetSize)
+	if _, err := d.Read(buffer); err != nil {
+		panic(err)
+	}
+	return NewDemoStream(bytes.NewReader(buffer), packetSize)
 }
 
 func (d *DemoStream) readCommandHeader() *DemoCmdHeader {

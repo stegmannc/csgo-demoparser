@@ -50,22 +50,22 @@ func (dc *DemoContext) GetGameEventDescriptor(eventid int32) *protom.CSVCMsg_Gam
 }
 
 func NewDemoContext(header *DemoHeader) *DemoContext {
-
-	formatedTickDuration := fmt.Sprintf("%gs", (header.PlaybackTime / float32(header.PlaybackTicks)))
-	finalTickDuration, err := time.ParseDuration(formatedTickDuration)
+	formattedTickDuration := fmt.Sprintf("%gs", (header.PlaybackTime / float32(header.PlaybackTicks)))
+	finalTickDuration, err := time.ParseDuration(formattedTickDuration)
 
 	if err != nil {
 		panic(err)
 	}
 
-	return &DemoContext{GameEventChan: make(chan *DemoGameEvent),
-		StopChan:     make(chan bool),
-		tickDuration: finalTickDuration,
+	return &DemoContext{
+		GameEventChan: make(chan *DemoGameEvent),
+		StopChan:      make(chan bool),
+		tickDuration:  finalTickDuration,
 	}
 }
 
 type MatchInfo struct {
-	mutex      sync.Mutex
+	mu         sync.Mutex
 	Map        string        `json:"map"`
 	ServerName string        `json:"serverName"`
 	Players    []*Player     `json:"players"`
@@ -73,8 +73,8 @@ type MatchInfo struct {
 }
 
 func (mi *MatchInfo) AddPlayer(player *Player) {
-	mi.mutex.Lock()
-	defer mi.mutex.Unlock()
+	mi.mu.Lock()
+	defer mi.mu.Unlock()
 	_, found := mi.findPlayerBySteamId(player.SteamId)
 	if !found {
 		mi.Players = append(mi.Players, player)
@@ -82,12 +82,12 @@ func (mi *MatchInfo) AddPlayer(player *Player) {
 }
 
 func (mi *MatchInfo) RemovePlayer(playerToDelete *Player) bool {
-	mi.mutex.Lock()
-	defer mi.mutex.Unlock()
+	mi.mu.Lock()
+	defer mi.mu.Unlock()
 	for i, player := range mi.Players {
 		if player == playerToDelete {
 			copy(mi.Players[i:], mi.Players[i+1:])
-			mi.Players[len(mi.Players)-1] = nil // or the zero value of T
+			mi.Players[len(mi.Players)-1] = nil
 			mi.Players = mi.Players[:len(mi.Players)-1]
 			return true
 		}
@@ -115,7 +115,7 @@ func (mi *MatchInfo) findPlayerByUserId(userId int32) (*Player, bool) {
 }
 
 type Round struct {
-	mutex     sync.Mutex
+	mu        sync.Mutex
 	Nr        int              `json:"nr"`
 	Duration  time.Duration    `json:"duration"`
 	Winner    int              `json:"winner"`
@@ -126,32 +126,35 @@ type Round struct {
 }
 
 func NewRound(startTick int32) *Round {
-	return &Round{StartTick: startTick, Events: make([]*DemoGameEvent, 0, 10)}
+	return &Round{
+		StartTick: startTick,
+		Events:    make([]*DemoGameEvent, 0, 10),
+	}
 }
 
 func (r *Round) AddEvent(event *DemoGameEvent) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.Events = append(r.Events, event)
 }
 
 type DemoStatistic struct {
-	mutex          sync.Mutex
-	MatchInfo      MatchInfo        `json:"matchInfo"`
+	mu             sync.Mutex
+	MatchInfo      *MatchInfo       `json:"matchInfo"`
 	MatchStartTick int32            `json:"-"`
 	Rounds         []*Round         `json:"rounds"`
 	UnmappedEvents []*DemoGameEvent `json:"unmappedEvents"`
 }
 
 func (ds *DemoStatistic) AddNewRound(startTick int32) {
-	ds.mutex.Lock()
-	defer ds.mutex.Unlock()
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
 	ds.Rounds = append(ds.Rounds, NewRound(startTick))
 }
 
 func NewDemoStatistic(demoHeader *DemoHeader) *DemoStatistic {
 
-	matchInfo := MatchInfo{
+	matchInfo := &MatchInfo{
 		Map:        convertToString(demoHeader.Mapname[:]),
 		ServerName: convertToString(demoHeader.Servername[:]),
 	}
@@ -182,6 +185,9 @@ func (ds *DemoStatistic) FindRoundByTick(tick int32) (round *Round, found bool) 
 }
 
 func (ds *DemoStatistic) RemoveWarmupRounds() {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
 	var roundIndex int
 	for i, round := range ds.Rounds {
 		if ds.MatchStartTick >= round.StartTick && (round.EndTick == 0 || ds.MatchStartTick < round.EndTick) {
@@ -189,8 +195,6 @@ func (ds *DemoStatistic) RemoveWarmupRounds() {
 		}
 	}
 
-	ds.mutex.Lock()
-	defer ds.mutex.Unlock()
 	copy(ds.Rounds[roundIndex:], ds.Rounds[roundIndex:])
 	sizeToRemove := len(ds.Rounds) - (len(ds.Rounds) - roundIndex)
 	for k, n := 0, sizeToRemove; k < n; k++ {
@@ -200,6 +204,9 @@ func (ds *DemoStatistic) RemoveWarmupRounds() {
 }
 
 func (ds *DemoStatistic) RenumberRounds() {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
 	for i, round := range ds.Rounds {
 		round.Nr = i + 1
 	}

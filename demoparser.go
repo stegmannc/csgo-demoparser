@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -53,6 +52,13 @@ type DemoParser struct {
 	stream  *DemoStream
 }
 
+type ServerClass struct {
+	ClassID     int16
+	DataTableID int
+	Name        string
+	DTName      string
+}
+
 func (dp *DemoParser) PrintHeader() {
 	fmt.Println("----HEADER START----")
 	fmt.Printf("demofilestamp: %x\n", dp.Header.Demofilestamp)
@@ -69,12 +75,11 @@ func (dp *DemoParser) PrintHeader() {
 	fmt.Println("----HEADER END----")
 }
 
-func processSingleMessage(stream *DemoStream, context *DemoContext, tick int32) {
-	messagetype := stream.GetVarInt()
+func (dp *DemoParser) parseMessage(stream *DemoStream, tick int32) {
+	messageType := stream.GetVarInt()
 	length := stream.GetVarInt()
-	messageTypeInt := protom.SVC_Messages(messagetype)
 
-	switch messageTypeInt {
+	switch protom.SVC_Messages(messageType) {
 	//case protom.SVC_Messages_svc_CreateStringTable:
 	//	msg := new(protom.CSVCMsg_CreateStringTable)
 	//	stream.ParseToStruct(msg, length)
@@ -90,16 +95,18 @@ func processSingleMessage(stream *DemoStream, context *DemoContext, tick int32) 
 	case protom.SVC_Messages_svc_GameEvent:
 		msg := &protom.CSVCMsg_GameEvent{}
 		stream.ParseToStruct(msg, length)
-		descriptor := context.GetGameEventDescriptor(msg.GetEventid())
+		descriptor := dp.Context.GetGameEventDescriptor(msg.GetEventid())
 		event := NewDemoGameEvent(msg.GetEventid(), descriptor.GetName(), tick)
 		descriptorKeys := descriptor.GetKeys()
 		eventKeys := msg.GetKeys()
 
 		for i, eventKey := range eventKeys {
 			descriptorKey := descriptorKeys[i]
-			event.addData(camelcase.Camelcase(descriptorKey.GetName()), mapGameEventKeyValue(descriptorKey.GetType(), eventKey))
+			name := camelcase.Camelcase(descriptorKey.GetName())
+			mappedValue := mapGameEventKeyValue(descriptorKey.GetType(), eventKey)
+			event.addData(name, mappedValue)
 		}
-		context.GameEventChan <- event
+		dp.Context.GameEventChan <- event
 	//case protom.SVC_Messages_svc_PacketEntities:
 	//	msg := new(protom.CSVCMsg_PacketEntities)
 	//	stream.ParseToStruct(msg, length)
@@ -107,7 +114,7 @@ func processSingleMessage(stream *DemoStream, context *DemoContext, tick int32) 
 	case protom.SVC_Messages_svc_GameEventList:
 		msg := &protom.CSVCMsg_GameEventList{}
 		stream.ParseToStruct(msg, length)
-		context.GameEventList = msg
+		dp.Context.GameEventList = msg
 	default:
 		stream.Skip(int64(length))
 	}
@@ -141,30 +148,16 @@ func printAsJson(msg interface{}) error {
 	return nil
 }
 
-func parseDemoPacket(stream *DemoStream, context *DemoContext, tick int32) {
+func (dp *DemoParser) parseDemoPacket(stream *DemoStream, context *DemoContext, tick int32) {
 	stream.Skip(PacketOffset)
-	blocksize := stream.GetInt()
-	buffer := make([]byte, blocksize)
-	stream.Read(buffer)
-	frameStream := NewDemoStream(bytes.NewReader(buffer), blocksize)
-	for !frameStream.IsProcessed() {
-		processSingleMessage(frameStream, context, tick)
+	packetStream := stream.CreatePacketStream()
+	for !packetStream.IsProcessed() {
+		dp.parseMessage(packetStream, tick)
 	}
 }
 
-type ServerClass struct {
-	ClassID     int16
-	DataTableID int
-	Name        string
-	DTName      string
-}
-
-func readDatatables(stream *DemoStream) {
-	blocksize := stream.GetInt()
-	buffer := make([]byte, blocksize)
-	stream.Read(buffer)
-	dataTablesStream := NewDemoStream(bytes.NewReader(buffer), blocksize)
-
+func (dp *DemoParser) parseDatatables() {
+	dataTablesStream := dp.stream.CreatePacketStream()
 	dataTables := make([]*protom.CSVCMsg_SendTable, 0)
 
 	for {
@@ -177,12 +170,8 @@ func readDatatables(stream *DemoStream) {
 		}
 
 		sendTable := &protom.CSVCMsg_SendTable{}
-		err := dataTablesStream.ParseToStruct(sendTable, messageLength)
-		if err != nil {
+		if err := dataTablesStream.ParseToStruct(sendTable, messageLength); err != nil {
 			panic(err)
-		}
-		if sendTable.GetNetTableName() == "DT_CSPlayerResource" {
-			printAsJson(sendTable)
 		}
 
 		if sendTable.GetIsEnd() {
@@ -194,7 +183,6 @@ func readDatatables(stream *DemoStream) {
 	fmt.Println("dataTables lenght: ", len(dataTables))
 
 	serverClassCount := int(dataTablesStream.GetInt16())
-	//fmt.Println("server class count ", serverClassCount)
 	serverClasses := make([]*ServerClass, serverClassCount)
 
 	for i := 0; i < serverClassCount; i++ {
@@ -221,13 +209,8 @@ func findDataTableID(sendTables []*protom.CSVCMsg_SendTable, name string) int {
 	return -1
 }
 
-func (d *DemoParser) readStringTables() {
-	blocksize := d.stream.GetInt()
-	fmt.Printf("StringTables size: %d\n", blocksize)
-	buffer := make([]byte, blocksize)
-	d.stream.Read(buffer)
-	stream := NewDemoStream(bytes.NewReader(buffer), blocksize)
-
+func (d *DemoParser) parseStringTables() {
+	stream := d.stream.CreatePacketStream()
 	numberOfTables := stream.GetByte()
 	fmt.Printf("stringTables size: %d\n", numberOfTables)
 
@@ -239,7 +222,7 @@ func (dp *DemoParser) ParseTicks() {
 		cmdHeader := stream.readCommandHeader()
 		switch cmdHeader.Cmd {
 		case DemSignon, DemPacket:
-			parseDemoPacket(stream, dp.Context, cmdHeader.Tick)
+			dp.parseDemoPacket(stream, dp.Context, cmdHeader.Tick)
 		case DemSynctick:
 			fmt.Println("skip synctick")
 		case DemConsoleCMD:
@@ -247,7 +230,7 @@ func (dp *DemoParser) ParseTicks() {
 		case DemUserCMD:
 			fmt.Println("usercmd")
 		case DemDatatables:
-			readDatatables(stream)
+			dp.parseDatatables()
 		case DemStop:
 			fmt.Println("STOP")
 			dp.Context.StopChan <- true
@@ -257,7 +240,7 @@ func (dp *DemoParser) ParseTicks() {
 		case DemCustomdata:
 			fmt.Println("customdata")
 		case DemSringTables:
-			dp.readStringTables()
+			dp.parseStringTables()
 		}
 	}
 }
@@ -270,8 +253,7 @@ func NewDemoParser(path string) (*DemoParser, error) {
 	header := &DemoHeader{}
 	stream := NewDemoStream(f, -1)
 
-	err = binary.Read(stream, binary.LittleEndian, header)
-	if err != nil {
+	if err = binary.Read(stream, binary.LittleEndian, header); err != nil {
 		return nil, err
 	}
 	if string(header.Demofilestamp[:7]) != DemoHeaderID {
