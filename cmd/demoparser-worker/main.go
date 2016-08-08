@@ -36,8 +36,28 @@ func main() {
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
+	uploadQueue, err := ch.QueueDeclare(
+		"demo-upload", // name
+		true,   // durable
+		false,   // delete when usused
+		false,   // exclusive
+		false,   // no-wait
+		nil,     // arguments
+	)
+	failOnError(err, "Failed to declare a queue")
+
+	_, err = ch.QueueDeclare(
+		"demo_info_upload", // name
+		true,   // durable
+		false,   // delete when usused
+		false,   // exclusive
+		false,   // no-wait
+		nil,     // arguments
+	)
+	failOnError(err, "Failed to declare a queue")
+
 	requests, err := ch.Consume(
-		"demo-upload", // queue
+		uploadQueue.Name, // queue
 		"demo-parser", // consumer
 		true,          // auto-ack
 		false,         // exclusive
@@ -57,9 +77,7 @@ func main() {
 				log.Println("could not parse demo request json...")
 				continue
 			}
-
 			go parseDemo(ch, request)
-
 		}
 	}()
 
