@@ -1,8 +1,7 @@
-package main
+package demoinfo
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -137,15 +136,6 @@ func mapGameEventKeyValue(valueType int32, key *protom.CSVCMsg_GameEventKeyT) in
 	default:
 		return nil
 	}
-}
-
-func printAsJson(msg interface{}) error {
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(data))
-	return nil
 }
 
 func (dp *DemoParser) parseDemoPacket(stream *DemoStream, context *DemoContext, tick int32) {

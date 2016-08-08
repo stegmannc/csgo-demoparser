@@ -1,4 +1,4 @@
-package main
+package demoinfo
 
 type DispatcherFunc func(context *DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent)
 

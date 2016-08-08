@@ -37,6 +37,12 @@
 			"path": "github.com/segmentio/go-camelcase",
 			"revision": "7085f1e3c734f696a4cd28568c33abae3100126f",
 			"revisionTime": "2016-07-26T19:29:23Z"
+		},
+		{
+			"checksumSHA1": "NOXevu99TFvpeSiFvwVF1Asxcso=",
+			"path": "github.com/streadway/amqp",
+			"revision": "2e25825abdbd7752ff08b270d313b93519a0a232",
+			"revisionTime": "2016-03-11T21:55:03Z"
 		}
 	],
 	"rootPath": "github.com/stegmannc/csgo-demoparser"
