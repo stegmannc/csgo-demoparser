@@ -1,6 +1,6 @@
 package demoinfo
 
-type DispatcherFunc func(context *DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent)
+type DispatcherFunc func(context DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent)
 
 type EventDispatcher interface {
 	Dispatch(eventName string, event *DemoGameEvent)
@@ -27,6 +27,6 @@ func (dispatcher *DemoEventDispatcher) RegisterHandler(eventName string, handler
 func (dispatcher *DemoEventDispatcher) Dispatch(eventName string, event *DemoGameEvent) {
 	handler, found := dispatcher.register[eventName]
 	if found {
-		handler(dispatcher.context, dispatcher.statistic, event)
+		handler(*dispatcher.context, dispatcher.statistic, event)
 	}
 }

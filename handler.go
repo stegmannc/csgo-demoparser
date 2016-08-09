@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func PlayerConnectHandler(context *DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
+func PlayerConnectHandler(context DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
 	steamId := event.Data["networkid"].(string)
 	player, found := demoStatistic.MatchInfo.findPlayerBySteamId(steamId)
 
@@ -21,7 +21,7 @@ func PlayerConnectHandler(context *DemoContext, demoStatistic *DemoStatistic, ev
 	}
 }
 
-func PlayerDisconnectHandler(context *DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
+func PlayerDisconnectHandler(context DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
 	player, found := demoStatistic.MatchInfo.findPlayerBySteamId(event.Data["networkid"].(string))
 
 	if !found {
@@ -36,7 +36,7 @@ func PlayerDisconnectHandler(context *DemoContext, demoStatistic *DemoStatistic,
 	}
 }
 
-func PlayerTeamHandler(context *DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
+func PlayerTeamHandler(context DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
 	player, found := demoStatistic.MatchInfo.findPlayerByUserId(event.Data["userid"].(int32))
 
 	if found && player.Team == 0 {
@@ -45,37 +45,35 @@ func PlayerTeamHandler(context *DemoContext, demoStatistic *DemoStatistic, event
 
 }
 
-func RoundAnnounceMatchStartHandler(context *DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
+func RoundAnnounceMatchStartHandler(context DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
 	demoStatistic.MatchStartTick = event.Tick
 }
 
-func RoundStartHandler(context *DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
+func RoundStartHandler(context DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
 	demoStatistic.AddNewRound(event.Tick)
 }
 
-func RoundEndHandler(context *DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
+func RoundEndHandler(context DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
 	round, found := demoStatistic.FindRoundByTick(event.Tick)
 
 	if !found {
-		log.Println("Could not handle round end")
 		return
 	}
 	round.Winner = int(event.Data["winner"].(int32))
 	round.Reason = int(event.Data["reason"].(int32))
 }
 
-func RoundOfficiallyEndHandler(context *DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
+func RoundOfficiallyEndHandler(context DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
 	round, found := demoStatistic.FindRoundByTick(event.Tick)
 
 	if !found {
-		log.Println("Could not handle round end")
 		return
 	}
 	round.EndTick = event.Tick
 	round.Duration = time.Duration(event.Tick-round.StartTick) * context.tickDuration
 }
 
-func CollectHandler(context *DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
+func CollectHandler(context DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
 	round, found := demoStatistic.FindRoundByTick(event.Tick)
 	if found {
 		event.TimeInRound = time.Duration(event.Tick-round.StartTick) * context.tickDuration
@@ -85,6 +83,6 @@ func CollectHandler(context *DemoContext, demoStatistic *DemoStatistic, event *D
 	}
 }
 
-func CalculateMatchDurationHandler(context *DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
+func CalculateMatchDurationHandler(context DemoContext, demoStatistic *DemoStatistic, event *DemoGameEvent) {
 	demoStatistic.MatchInfo.Duration = time.Duration(event.Tick) * context.tickDuration
 }
