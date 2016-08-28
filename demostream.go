@@ -94,6 +94,16 @@ func (d *DemoStream) GetInt16() int16 {
 	return x
 }
 
+func (d *DemoStream) GetInt64() int64 {
+	var x int64
+	err := binary.Read(d.reader, binary.LittleEndian, &x)
+	if err != nil {
+		panic(err)
+	}
+	d.position += 2
+	return x
+}
+
 func (d *DemoStream) Read(out []byte) (int, error) {
 	n, err := d.reader.Read(out)
 	d.position += n
@@ -105,7 +115,6 @@ func (d *DemoStream) Skip(n int64) {
 }
 
 func (d *DemoStream) ParseToStruct(msg proto.Message, messageLength uint64) error {
-	d.position += int(messageLength)
 	buf := make([]byte, messageLength)
 	_, err := d.Read(buf)
 	if err != nil {
